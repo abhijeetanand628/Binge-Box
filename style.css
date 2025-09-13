@@ -1,0 +1,170 @@
+/* General Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Poppins", sans-serif;
+}
+
+body {
+  background-color: #121212;
+  color: #fff;
+  line-height: 1.6;
+}
+
+/* Navbar */
+.navbar {
+  background: #1e1e1e;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.logo {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #ff4757;
+}
+
+.navbar ul {
+  list-style: none;
+  display: flex;
+  gap: 1.5rem;
+}
+
+.navbar a {
+  text-decoration: none;
+  color: #aaa;
+  transition: 0.3s;
+}
+
+.navbar a:hover,
+.navbar a.active {
+  color: #ff4757;
+}
+
+/* Search Section */
+.search-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1.5rem;
+  background: #181818;
+  gap: 1rem;
+}
+
+.search-section input {
+  padding: 0.6rem 1rem;
+  border-radius: 6px;
+  border: none;
+  outline: none;
+  width: 300px;
+  background: #222;
+  color: white;
+}
+
+.search-section button {
+  padding: 0.6rem 1rem;
+  background: #ff4757;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.search-section button:hover {
+  background: #e84118;
+}
+
+.search-section select {
+  padding: 0.6rem 1rem;
+  border-radius: 6px;
+  border: none;
+  background: #222;
+  color: white;
+}
+
+/* Movies Grid */
+.section-title {
+  text-align: center;
+  margin: 2rem 0 1rem;
+  font-size: 1.5rem;
+  color: #ff4757;
+}
+
+.movies-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1.5rem;
+  padding: 1rem 2rem;
+}
+
+.movie-card {
+  background: #1e1e1e;
+  border-radius: 10px;
+  overflow: hidden;
+  transition: 0.3s;
+  cursor: pointer;
+  position: relative;
+}
+
+.movie-card:hover {
+  transform: scale(1.05);
+}
+
+.movie-card img {
+  width: 100%;
+  display: block;
+}
+
+.movie-info {
+  padding: 0.8rem;
+}
+
+.movie-title {
+  font-size: 1rem;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.movie-rating {
+  font-size: 0.9rem;
+  color: #ffdd59;
+}
+
+/* Favorite Button */
+.favorite-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0,0,0,0.7);
+  border: none;
+  color: #ff4757;
+  font-size: 1.2rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+/* Footer */
+.footer {
+  background: #181818;
+  text-align: center;
+  padding: 1rem;
+  margin-top: 2rem;
+  color: #aaa;
+}
+
+/* Hidden */
+.hidden {
+  display: none;
+}
+
+.logo{
+  cursor: pointer;
+}

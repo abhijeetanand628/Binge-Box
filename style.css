@@ -28,6 +28,7 @@ body {
   font-size: 1.5rem;
   font-weight: bold;
   color: #ff4757;
+  cursor: pointer;
 }
 
 .navbar ul {
@@ -151,6 +152,11 @@ body {
   cursor: pointer;
 }
 
+.favorite-btn.active {
+  background-color: gold;
+  color: black;
+}
+
 /* Footer */
 .footer {
   background: #181818;
@@ -165,6 +171,5 @@ body {
   display: none;
 }
 
-.logo{
-  cursor: pointer;
-}
+
+

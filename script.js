@@ -31,7 +31,7 @@ search.addEventListener('click', function(){
     }
     else
     {
-        getMovies(input.value);
+        getMoviesSeries(input.value);
     }
     input.value = '';
 });
@@ -45,7 +45,7 @@ input.addEventListener('keyup', function(){
         }
         else
         {
-            getMovies(input.value);
+            getMoviesSeries(input.value);
         }
         input.value = '';
     }
@@ -85,24 +85,35 @@ favorite.addEventListener('click', function(){
 async function displayMovies(movies, container = moviesContainer) {
     try 
     {
-        container.innerHTML = ''
+        container.innerHTML = '';
         movies.forEach(movie => {
+
+            // TMDB returns title for movies, name for TV shows
+            const title = movie.title || movie.name || "Untitled";
+
+            // release_date (movies) OR first_air_date (TV shows)
+            const rating = movie.vote_average ? movie.vote_average.toFixed(1) : "N/A";
+
             const poster = movie.poster_path 
                 ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
                 : `https://placehold.co/500x750/1c1c1c/aaa?text=No+Image`
+
             const movieCard = document.createElement('div')
             movieCard.classList.add('movie-card');
             movieCard.dataset.movieId = movie.id;
+
+            // Store BOTH id & media_type (important for details + favorites)
+            movieCard.dataset.mediaType = movie.media_type || (movie.title ? "movie" : "tv"); // default = movie
+
             movieCard.innerHTML = `
-            <img src="${poster}" alt="${movie.title}" />
+            <img src="${poster}" alt="${title}" />
             <div class="movie-info">
-                <h3 class="movie-title">${movie.title}</h3>
-                <p class="movie-rating">⭐ ${movie.vote_average}</p>
+                <h3 class="movie-title">${title}</h3>
+                <p class="movie-rating">⭐ ${rating || "N/A"}</p>
             </div>
             <button class="favorite-btn">⭐</button>
             `;
 
-            
             
             movieCard.addEventListener('click', function(e){
                 // e.currentTarget is the specific movieCard that was clicked.
@@ -110,6 +121,8 @@ async function displayMovies(movies, container = moviesContainer) {
 
                 // Now, we can access the dataset property of that specific card.
                 const movieId = card.dataset.movieId;
+
+                const mediaType = card.dataset.mediaType;
                 
                 if (container === moviesContainer) {
                     lastSection = "home";
@@ -117,14 +130,16 @@ async function displayMovies(movies, container = moviesContainer) {
                     lastSection = "favorites";
                 }
 
-                getMovieDetails(movieId);
+                getMovieDetails(movieId, mediaType);
                 // console.log('Movie ID: ', movieId);
             })
 
-
+            // Favorite button
             const favBtn = movieCard.querySelector('.favorite-btn');
             
-            const isFav = favorites.some(fav => fav.id === movie.id)
+            const isFav = favorites.some(
+                 fav => fav.id === movie.id && fav.media_type === (movie.media_type || (movie.title ? "movie" : "tv"))
+            )
             if(isFav) {
                 favBtn.classList.add('active');
             }
@@ -132,8 +147,16 @@ async function displayMovies(movies, container = moviesContainer) {
             favBtn.addEventListener('click', function(e){
                 e.stopPropagation();
 
-                // save/remove from favorites
-                toggleFav(movie);
+                // Save id + media_type in favorites
+                toggleFav({
+                    id: movie.id,
+                    media_type: movie.media_type || (movie.title ? "movie" : "tv"),
+                    title: title,
+                    poster_path: movie.poster_path,
+                    vote_average: movie.vote_average,
+                    release_date: movie.release_date,
+                    first_air_date: movie.first_air_date
+                });
 
                 // optional: visually show selected
                 favBtn.classList.toggle('active');
@@ -147,7 +170,7 @@ async function displayMovies(movies, container = moviesContainer) {
             container.appendChild(movieCard);
         });
     } catch (error) {
-        alert('Failed to fetch movie data. Please check your internet connection or check your movie name.')
+        alert('Failed to fetch movie/series data. Please check your internet connection or check your movie name.')
     }
 }
 
@@ -156,12 +179,21 @@ async function getPopularMovies()
 {
     try 
     {
-        let url =  `https://api.themoviedb.org/3/movie/popular?api_key=${apiKey}`;
-        let response = await fetch(url);
-        let data = await response.json();
-        displayMovies(data.results)
+        // MOVIES
+        let movieUrl =  `https://api.themoviedb.org/3/movie/popular?api_key=${apiKey}`;
+        let movieRes = await fetch(movieUrl);
+        let movie = await movieRes.json();
+
+        // TV SERIES
+        let seriesUrl = `https://api.themoviedb.org/3/tv/popular?api_key=${apiKey}`;
+        let seriesRes = await fetch(seriesUrl);
+        let series = await seriesRes.json();
+
+        // COMBINE THEM
+        let combined = [...movie.results, ...series.results];
+        displayMovies(combined);
     }catch (error) {
-        alert("Failed to fetch movie data. Please check your internet connection.");
+        alert("Failed to fetch movie/series data. Please check your internet connection.");
     }
 }
 
@@ -171,11 +203,11 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 
-async function getMovies(Movie)
+async function getMoviesSeries(Movie)
 {
     try 
     {
-        let url = `https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${Movie}`;    
+        let url = `https://api.themoviedb.org/3/search/multi?api_key=${apiKey}&query=${Movie}`;    
         let response = await fetch(url);
         let data = await response.json();
         displayMovies(data.results);
@@ -185,66 +217,83 @@ async function getMovies(Movie)
 }
 
 
-async function getMovieDetails(movieId)
+async function getMovieDetails(movieId, mediaType = "movie")
 {
     try 
     {
-        // Fectch movie details
-        let url = `https://api.themoviedb.org/3/movie/${movieId}?api_key=${apiKey}&language=en-US`;
+        // Dynamically pick endpoint based on mediaType (movie or tv)
+        let url = `https://api.themoviedb.org/3/${mediaType}/${movieId}?api_key=${apiKey}&language=en-US&append_to_response=credits,videos`;
         let response = await fetch(url);
         let movie = await response.json();
 
 
-        // Fetch credits (cast & crew)
-        let creditsUrl = `https://api.themoviedb.org/3/movie/${movieId}/credits?api_key=${apiKey}&language=en-US`;
-        let creditsRes = await fetch(creditsUrl);
-        let credits = await creditsRes.json();
+        // // Fetch credits (cast & crew)
+        // let creditsUrl = `https://api.themoviedb.org/3/movie/${movieId}/credits?api_key=${apiKey}&language=en-US`;
+        // let creditsRes = await fetch(creditsUrl);
+        // let credits = await creditsRes.json();
 
-        const poster = movie.poster_path 
-            ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
-            : `https://placehold.co/500x750/1c1c1c/aaa?text=No+Image`;
+        // // Fetch video trailers
+        // let videosUrl = `https://api.themoviedb.org/3/movie/${movieId}/videos?api_key=${apiKey}&language=en-US`;
+        // let videosRes = await fetch(videosUrl);
+        // let videos = await videosRes.json();
 
-        
-        // Genres
-        const genres = movie.genres.map(g => g.name).join(', ') || "N/A";
+            const poster = movie.poster_path 
+                ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
+                : `https://placehold.co/500x750/1c1c1c/aaa?text=No+Image`;
+            
+            // Title, movies use title, TV shows use name
+            const title = movie.title || movie.name || "Untitled";
 
-        // Languages
-        const languages = movie.spoken_languages.map(l => l.english_name).join(', ') || "N/A";
+            // Release Date , release_date (movies), first_air_date (TV shows)
+            const releaseDate = movie.release_date || movie.first_air_date || "N/A";
 
-        // Production Companies
-        const companies = movie.production_companies.map(c => c.name).join(', ') || "N/A";
+            // Genres
+            const genres = movie.genres.map(g => g.name).join(', ') || "N/A";
 
-        // Cast (top 5 actors)
-        const cast = credits.cast.slice(0, 5).map(actor => actor.name).join(', ') || "N/A";
+            // Languages
+            const languages = movie.spoken_languages.map(l => l.english_name).join(', ') || "N/A";
+
+            // Production Companies
+            const companies = movie.production_companies.map(c => c.name).join(', ') || "N/A";
+
+            // Cast (top 6 actors)
+            const cast = movie.credits?.cast?.slice(0, 6).map(actor => actor.name).join(', ') || "N/A";
+
+            // Pick the 1st trailer
+            const trailer = movie.videos?.results?.find(v => v.type === 'Trailer' && v.site === 'YouTube');
 
 
-        detailContainer.innerHTML = `
-        <div class = "details-card">
-            <img src="${poster}" alt="${movie.title}" />
-            <div class="details-info">
-                <h2>${movie.title}</h2>
-                <p class="tagline"><em>${movie.tagline || ""}</em></p>
-                <p><strong>Genres:</strong> ${genres}</p>
-                <p><strong>Runtime:</strong> ${movie.runtime ? movie.runtime + " min" : "N/A"}</p>
-                <p><strong>Languages:</strong> ${languages}</p>
-                <p><strong>Release Date:</strong> ${movie.release_date}</p>
-                <p><strong>Rating:</strong> ⭐ ${movie.vote_average}</p>
-                <p><strong>Overview:</strong> ${movie.overview}</p>
-                <p><strong>Cast:</strong> ${cast}</p>
-                <p><strong>Production:</strong> ${companies}</p>
-                <p><strong>Budget:</strong> $${movie.budget.toLocaleString()}</p>
-                <p><strong>Revenue:</strong> $${movie.revenue.toLocaleString()}</p>
-                ${movie.homepage ? `<p><a href="${movie.homepage}" target="_blank">Official Website</a></p>` : ""}
+            detailContainer.innerHTML = `
+            <div class = "details-card">
+                <img src="${poster}" alt="${title}" />
+                <div class="details-info">
+                    <h2>${title}</h2>
+                    <p class="tagline"><em>${movie.tagline || ""}</em></p>
+                    <p><strong>Genres:</strong> ${genres}</p>
+                    <p><strong>Runtime:</strong> ${movie.runtime 
+                    ? movie.runtime + " min" 
+                    : movie.episode_run_time?.length ? movie.episode_run_time[0] + " min/episode" 
+                    : "N/A"}</p>
+                    <p><strong>Languages:</strong> ${languages}</p>
+                    <p><strong>Release Date:</strong> ${releaseDate}</p>
+                    <p><strong>Rating:</strong> ⭐ ${movie.vote_average}</p>
+                    <p><strong>Overview:</strong> ${movie.overview}</p>
+                    <p><strong>Cast:</strong> ${cast}</p>
+                    <p><strong>Production:</strong> ${companies}</p>
+                    ${mediaType === "movie" ? `<p><strong>Budget:</strong> $${movie.budget.toLocaleString()}</p>` : ""}
+                    ${mediaType === "movie" ? `<p><strong>Revenue:</strong> $${movie.revenue.toLocaleString()}</p>` : ""}
+                    ${movie.homepage ? `<p>Website: <a href="${movie.homepage}" target="_blank">Official Website</a></p>` : ""}
+                    ${trailer ? `<p>Trailer: <a href="https://www.youtube.com/watch?v=${trailer.key}" target="_blank">Watch Trailer</a></p>` : ""}
+                </div>
             </div>
-        </div>
-        `;
+            `;
 
-        mainSection.classList.add('hidden');
-        favSection.classList.add('hidden');
-        detailSection.classList.remove('hidden')
+            mainSection.classList.add('hidden');
+            favSection.classList.add('hidden');
+            detailSection.classList.remove('hidden')
 
-    } catch (error) {
-        alert("Failed to fetch movie data. Please check your internet connection.");
+        } catch (error) {
+            alert("Failed to fetch movie/series data. Please check your internet connection.");
     }
 }
 
@@ -252,20 +301,32 @@ async function getMovieDetails(movieId)
 let favorites = JSON.parse(localStorage.getItem("favorites")) || [];
 
 
-function toggleFav(movie)
+function toggleFav(item)
 {
-    const index = favorites.findIndex(fav => fav.id === movie.id);
+
+    const favItem = {
+        id: item.id,
+        media_type: item.media_type || (item.title ? "movie" : "tv"),
+        title: item.title || item.name || "Untitled",                 
+        poster_path: item.poster_path || null,
+        vote_average: item.vote_average || 0
+    };
+
+    const index = favorites.findIndex(
+        fav => fav.id === favItem.id && fav.media_type === favItem.media_type
+    );
+
     if(index === -1)
     {
         // Add to favorites
-        favorites.push(movie);
-        console.log("ADDED");
+        favorites.push(favItem);
+        console.log("ADDED", favItem.title);
     }
     else
     {
         // Remove from favorites
         favorites.splice(index, 1); // Remove 1 item at position "index"
-        console.log("REMOVED");
+        console.log("REMOVED", favItem.title);
     }
     localStorage.setItem("favorites", JSON.stringify(favorites));
 }

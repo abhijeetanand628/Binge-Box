@@ -27,7 +27,7 @@ logo.addEventListener('click', function(){
 search.addEventListener('click', function(){
     if(input.value === '')
     {
-        alert("Please enter a movie name")
+        alert("Please enter a movie/series name")
     }
     else
     {
@@ -41,7 +41,7 @@ input.addEventListener('keyup', function(){
     {
         if(input.value === '')
         {
-            alert("Please enter a movie name")
+            alert("Please enter a movie/series name")
         }
         else
         {
@@ -148,7 +148,7 @@ async function displayMovies(movies, container = moviesContainer) {
                 e.stopPropagation();
 
                 // Save id + media_type in favorites
-                toggleFav({
+                const action = toggleFav({
                     id: movie.id,
                     media_type: movie.media_type || (movie.title ? "movie" : "tv"),
                     title: title,
@@ -159,7 +159,14 @@ async function displayMovies(movies, container = moviesContainer) {
                 });
 
                 // optional: visually show selected
-                favBtn.classList.toggle('active');
+                if (action === "added") 
+                {
+                    favBtn.classList.add('active');
+                } 
+                else 
+                {
+                    favBtn.classList.remove('active');
+                }
 
                 if (container === favContainer) {
                     const favs = JSON.parse(localStorage.getItem("favorites")) || [];
@@ -212,7 +219,7 @@ async function getMoviesSeries(Movie)
         let data = await response.json();
         displayMovies(data.results);
     } catch(error){
-        alert("Failed to fetch movie data. Please check your internet connection.");
+        alert("Failed to fetch movie/series data. Please check your internet connection.");
     }
 }
 
@@ -316,19 +323,24 @@ function toggleFav(item)
         fav => fav.id === favItem.id && fav.media_type === favItem.media_type
     );
 
+    let action;
+
     if(index === -1)
     {
         // Add to favorites
         favorites.push(favItem);
+        localStorage.setItem("favorites", JSON.stringify(favorites));
         console.log("ADDED", favItem.title);
+        return "added"; 
     }
     else
     {
         // Remove from favorites
         favorites.splice(index, 1); // Remove 1 item at position "index"
+        localStorage.setItem("favorites", JSON.stringify(favorites));
         console.log("REMOVED", favItem.title);
+        return "removed"; 
     }
-    localStorage.setItem("favorites", JSON.stringify(favorites));
 }
 
 function showFav()

@@ -79,9 +79,11 @@ input.addEventListener('input', async function(){
             input.value = title;
             suggestions.innerHTML = '';
             getMoviesSeries(title);
+            input.value = '';
         });
 
         suggestions.appendChild(li);
+        
     });
     } catch(err)
     {

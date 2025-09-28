@@ -1,5 +1,5 @@
-const search = document.querySelector('#search-btn');
-const input = document.querySelector('#search-box');
+const search = document.querySelector('#searchBtn');
+const input = document.querySelector('#searchInput');
 const moviesContainer = document.querySelector('#movies-container');
 const home = document.querySelector('#home-link');
 const favorite = document.querySelector('#favorites-link');
@@ -11,6 +11,7 @@ const mainSection = document.querySelector('main');
 const detailSection = document.querySelector('#details-section');
 const detailContainer = document.querySelector('#details-container');
 const back = document.querySelector('#back-btn');
+const suggestions = document.querySelector('#suggestions');
 
 
 
@@ -36,7 +37,7 @@ search.addEventListener('click', function(){
     input.value = '';
 });
 
-input.addEventListener('keyup', function(){
+input.addEventListener('keyup', function(event){
     if(event.key === 'Enter')
     {
         if(input.value === '')
@@ -50,6 +51,51 @@ input.addEventListener('keyup', function(){
         input.value = '';
     }
 })
+
+
+input.addEventListener('input', async function(){
+    const query = input.value.trim();
+
+    // Clear Old Suggestions
+    suggestions.innerHTML = '';
+
+    if(query.length < 2) // Only trigger if at least 2 chars
+        return;
+
+    try {
+    const url = `https://api.themoviedb.org/3/search/multi?api_key=${apiKey}&query=${query}`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    // Take only top 5 results
+    const results = data.results.slice(0, 5);
+
+    results.forEach(item => {
+        const title = item.title || item.name;
+        const li = document.createElement("li");
+        li.textContent = title;
+
+        li.addEventListener('click', () => {
+            input.value = title;
+            suggestions.innerHTML = '';
+            getMoviesSeries(title);
+        });
+
+        suggestions.appendChild(li);
+    });
+    } catch(err)
+    {
+        console.log("Suggestion fetch failed", err);
+    }
+})
+
+
+// Hide suggestions when clicked outside
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".search-container")) {
+    suggestions.innerHTML = "";
+  }
+});
 
 
 back.addEventListener('click', function(){
@@ -349,4 +395,5 @@ function showFav()
     const favs = JSON.parse(localStorage.getItem("favorites")) || [];
     displayMovies(favs, favContainer);
 }
+
 

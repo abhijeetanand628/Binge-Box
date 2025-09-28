@@ -18,8 +18,11 @@
   </header>
 
   <section class="search-section">
-    <input type="text" id="search-box" placeholder="Search for movies..." />
-    <button id="search-btn">🔍</button>
+  <div class="search-container">
+    <input type="text" id="searchInput" placeholder="Search for movies...">
+    <button id="searchBtn">🔍</button>
+    <ul id="suggestions" class="suggestions-list"></ul>
+  </div>
     <!-- <select id="genre-filter">
       <option value="">All Genres</option>
       <option value="28">Action</option>
@@ -31,7 +34,7 @@
   </section>
 
   <main>
-    <h2 class="section-title">Discover Movies</h2>
+    <h2 class="section-title">Discover Movies/Series</h2>
     <div id="movies-container" class="movies-grid">
     </div>  
   </main>

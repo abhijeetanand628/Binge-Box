@@ -13,18 +13,21 @@ const detailContainer = document.querySelector('#details-container');
 const back = document.querySelector('#back-btn');
 const suggestions = document.querySelector('#suggestions');
 
-
-
 // TMDB API
 const apiKey = '1d61ff71090b794ac049506ada6d922b';
 let lastSection;
 
+// Favorites storage
+let favorites = JSON.parse(localStorage.getItem("favorites")) || [];
 
+
+// Logo click handler
 logo.addEventListener('click', function(){
     home.click();
     getPopularMovies();
 })
 
+// Search button click handler
 search.addEventListener('click', function(){
     if(input.value === '')
     {
@@ -37,6 +40,7 @@ search.addEventListener('click', function(){
     input.value = '';
 });
 
+// Enter key handler for search input
 input.addEventListener('keyup', function(event){
     if(event.key === 'Enter')
     {
@@ -52,7 +56,7 @@ input.addEventListener('keyup', function(event){
     }
 })
 
-
+// Search suggestions handler
 input.addEventListener('input', async function(){
     const query = input.value.trim();
 
@@ -91,7 +95,6 @@ input.addEventListener('input', async function(){
     }
 })
 
-
 // Hide suggestions when clicked outside
 document.addEventListener("click", (e) => {
   if (!e.target.closest(".search-container")) {
@@ -99,7 +102,7 @@ document.addEventListener("click", (e) => {
   }
 });
 
-
+// Back button handler
 back.addEventListener('click', function(){
     detailSection.classList.add('hidden');
     if(lastSection === 'home')
@@ -112,8 +115,7 @@ back.addEventListener('click', function(){
     }
 })
 
-
-
+// Home navigation handler
 home.addEventListener('click', function(){
     home.classList.add('active');
     favorite.classList.remove('active');
@@ -121,6 +123,7 @@ home.addEventListener('click', function(){
     favSection.classList.add('hidden');
 })
 
+// Favorites navigation handler
 favorite.addEventListener('click', function(){
     home.classList.remove('active');
     favorite.classList.add('active');
@@ -129,7 +132,126 @@ favorite.addEventListener('click', function(){
     showFav();
 })
 
+// Get popular movies and TV series
+async function getPopularMovies()
+{
+    try 
+    {
+        // MOVIES
+        let movieUrl =  `https://api.themoviedb.org/3/movie/popular?api_key=${apiKey}`;
+        let movieRes = await fetch(movieUrl);
+        let movie = await movieRes.json();
 
+        // TV SERIES
+        let seriesUrl = `https://api.themoviedb.org/3/tv/popular?api_key=${apiKey}`;
+        let seriesRes = await fetch(seriesUrl);
+        let series = await seriesRes.json();
+
+        // COMBINE THEM
+        let combined = [...movie.results, ...series.results];
+        displayMovies(combined);
+    }catch (error) {
+        alert("Failed to fetch movie/series data. Please check your internet connection.");
+    }
+}
+
+// Search for movies and TV series
+async function getMoviesSeries(Movie)
+{
+    try 
+    {
+        let url = `https://api.themoviedb.org/3/search/multi?api_key=${apiKey}&query=${Movie}`;    
+        let response = await fetch(url);
+        let data = await response.json();
+        displayMovies(data.results);
+    } catch(error){
+        alert("Failed to fetch movie/series data. Please check your internet connection.");
+    }
+}
+
+// Get detailed information for a specific movie/TV show
+async function getMovieDetails(movieId, mediaType = "movie")
+{
+    try 
+    {
+        // Dynamically pick endpoint based on mediaType (movie or tv)
+        let url = `https://api.themoviedb.org/3/${mediaType}/${movieId}?api_key=${apiKey}&language=en-US&append_to_response=credits,videos`;
+        let response = await fetch(url);
+        let movie = await response.json();
+
+
+        // // Fetch credits (cast & crew)
+        // let creditsUrl = `https://api.themoviedb.org/3/movie/${movieId}/credits?api_key=${apiKey}&language=en-US`;
+        // let creditsRes = await fetch(creditsUrl);
+        // let credits = await creditsRes.json();
+
+        // // Fetch video trailers
+        // let videosUrl = `https://api.themoviedb.org/3/movie/${movieId}/videos?api_key=${apiKey}&language=en-US`;
+        // let videosRes = await fetch(videosUrl);
+        // let videos = await videosRes.json();
+
+            const poster = movie.poster_path 
+                ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
+                : `https://placehold.co/500x750/1c1c1c/aaa?text=No+Image`;
+            
+            // Title, movies use title, TV shows use name
+            const title = movie.title || movie.name || "Untitled";
+
+            // Release Date , release_date (movies), first_air_date (TV shows)
+            const releaseDate = movie.release_date || movie.first_air_date || "N/A";
+
+            // Genres
+            const genres = movie.genres.map(g => g.name).join(', ') || "N/A";
+
+            // Languages
+            const languages = movie.spoken_languages.map(l => l.english_name).join(', ') || "N/A";
+
+            // Production Companies
+            const companies = movie.production_companies.map(c => c.name).join(', ') || "N/A";
+
+            // Cast (top 6 actors)
+            const cast = movie.credits?.cast?.slice(0, 6).map(actor => actor.name).join(', ') || "N/A";
+
+            // Pick the 1st trailer
+            const trailer = movie.videos?.results?.find(v => v.type === 'Trailer' && v.site === 'YouTube');
+
+
+            detailContainer.innerHTML = `
+            <div class = "details-card">
+                <img src="${poster}" alt="${title}" />
+                <div class="details-info">
+                    <h2>${title}</h2>
+                    <p class="tagline"><em>${movie.tagline || ""}</em></p>
+                    <p><strong>Genres:</strong> ${genres}</p>
+                    <p><strong>Runtime:</strong> ${movie.runtime 
+                    ? movie.runtime + " min" 
+                    : movie.episode_run_time?.length ? movie.episode_run_time[0] + " min/episode" 
+                    : "N/A"}</p>
+                    <p><strong>Languages:</strong> ${languages}</p>
+                    <p><strong>Release Date:</strong> ${releaseDate}</p>
+                    <p><strong>Rating:</strong> ⭐ ${movie.vote_average}</p>
+                    <p><strong>Overview:</strong> ${movie.overview}</p>
+                    <p><strong>Cast:</strong> ${cast}</p>
+                    <p><strong>Production:</strong> ${companies}</p>
+                    ${mediaType === "movie" ? `<p><strong>Budget:</strong> $${movie.budget.toLocaleString()}</p>` : ""}
+                    ${mediaType === "movie" ? `<p><strong>Revenue:</strong> $${movie.revenue.toLocaleString()}</p>` : ""}
+                    ${movie.homepage ? `<p>Website: <a href="${movie.homepage}" target="_blank">Official Website</a></p>` : ""}
+                    ${trailer ? `<p>Trailer: <a href="https://www.youtube.com/watch?v=${trailer.key}" target="_blank">Watch Trailer</a></p>` : ""}
+                </div>
+            </div>
+            `;
+
+            mainSection.classList.add('hidden');
+            favSection.classList.add('hidden');
+            detailSection.classList.remove('hidden')
+
+        } catch (error) {
+            alert("Failed to fetch movie/series data. Please check your internet connection.");
+    }
+}
+
+
+// Display movies in the specified container
 async function displayMovies(movies, container = moviesContainer) {
     try 
     {
@@ -147,6 +269,7 @@ async function displayMovies(movies, container = moviesContainer) {
                 : `https://placehold.co/500x750/1c1c1c/aaa?text=No+Image`
 
             const movieCard = document.createElement('div')
+            // Adding the movie-card basically allows styling to be applied through CSS.
             movieCard.classList.add('movie-card');
             movieCard.dataset.movieId = movie.id;
 
@@ -230,135 +353,9 @@ async function displayMovies(movies, container = moviesContainer) {
 }
 
 
-async function getPopularMovies()
-{
-    try 
-    {
-        // MOVIES
-        let movieUrl =  `https://api.themoviedb.org/3/movie/popular?api_key=${apiKey}`;
-        let movieRes = await fetch(movieUrl);
-        let movie = await movieRes.json();
-
-        // TV SERIES
-        let seriesUrl = `https://api.themoviedb.org/3/tv/popular?api_key=${apiKey}`;
-        let seriesRes = await fetch(seriesUrl);
-        let series = await seriesRes.json();
-
-        // COMBINE THEM
-        let combined = [...movie.results, ...series.results];
-        displayMovies(combined);
-    }catch (error) {
-        alert("Failed to fetch movie/series data. Please check your internet connection.");
-    }
-}
-
-// Code runs automatically right when the page opens
-window.addEventListener('DOMContentLoaded', () => {
-    getPopularMovies();
-});
-
-
-async function getMoviesSeries(Movie)
-{
-    try 
-    {
-        let url = `https://api.themoviedb.org/3/search/multi?api_key=${apiKey}&query=${Movie}`;    
-        let response = await fetch(url);
-        let data = await response.json();
-        displayMovies(data.results);
-    } catch(error){
-        alert("Failed to fetch movie/series data. Please check your internet connection.");
-    }
-}
-
-
-async function getMovieDetails(movieId, mediaType = "movie")
-{
-    try 
-    {
-        // Dynamically pick endpoint based on mediaType (movie or tv)
-        let url = `https://api.themoviedb.org/3/${mediaType}/${movieId}?api_key=${apiKey}&language=en-US&append_to_response=credits,videos`;
-        let response = await fetch(url);
-        let movie = await response.json();
-
-
-        // // Fetch credits (cast & crew)
-        // let creditsUrl = `https://api.themoviedb.org/3/movie/${movieId}/credits?api_key=${apiKey}&language=en-US`;
-        // let creditsRes = await fetch(creditsUrl);
-        // let credits = await creditsRes.json();
-
-        // // Fetch video trailers
-        // let videosUrl = `https://api.themoviedb.org/3/movie/${movieId}/videos?api_key=${apiKey}&language=en-US`;
-        // let videosRes = await fetch(videosUrl);
-        // let videos = await videosRes.json();
-
-            const poster = movie.poster_path 
-                ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
-                : `https://placehold.co/500x750/1c1c1c/aaa?text=No+Image`;
-            
-            // Title, movies use title, TV shows use name
-            const title = movie.title || movie.name || "Untitled";
-
-            // Release Date , release_date (movies), first_air_date (TV shows)
-            const releaseDate = movie.release_date || movie.first_air_date || "N/A";
-
-            // Genres
-            const genres = movie.genres.map(g => g.name).join(', ') || "N/A";
-
-            // Languages
-            const languages = movie.spoken_languages.map(l => l.english_name).join(', ') || "N/A";
-
-            // Production Companies
-            const companies = movie.production_companies.map(c => c.name).join(', ') || "N/A";
-
-            // Cast (top 6 actors)
-            const cast = movie.credits?.cast?.slice(0, 6).map(actor => actor.name).join(', ') || "N/A";
-
-            // Pick the 1st trailer
-            const trailer = movie.videos?.results?.find(v => v.type === 'Trailer' && v.site === 'YouTube');
-
-
-            detailContainer.innerHTML = `
-            <div class = "details-card">
-                <img src="${poster}" alt="${title}" />
-                <div class="details-info">
-                    <h2>${title}</h2>
-                    <p class="tagline"><em>${movie.tagline || ""}</em></p>
-                    <p><strong>Genres:</strong> ${genres}</p>
-                    <p><strong>Runtime:</strong> ${movie.runtime 
-                    ? movie.runtime + " min" 
-                    : movie.episode_run_time?.length ? movie.episode_run_time[0] + " min/episode" 
-                    : "N/A"}</p>
-                    <p><strong>Languages:</strong> ${languages}</p>
-                    <p><strong>Release Date:</strong> ${releaseDate}</p>
-                    <p><strong>Rating:</strong> ⭐ ${movie.vote_average}</p>
-                    <p><strong>Overview:</strong> ${movie.overview}</p>
-                    <p><strong>Cast:</strong> ${cast}</p>
-                    <p><strong>Production:</strong> ${companies}</p>
-                    ${mediaType === "movie" ? `<p><strong>Budget:</strong> $${movie.budget.toLocaleString()}</p>` : ""}
-                    ${mediaType === "movie" ? `<p><strong>Revenue:</strong> $${movie.revenue.toLocaleString()}</p>` : ""}
-                    ${movie.homepage ? `<p>Website: <a href="${movie.homepage}" target="_blank">Official Website</a></p>` : ""}
-                    ${trailer ? `<p>Trailer: <a href="https://www.youtube.com/watch?v=${trailer.key}" target="_blank">Watch Trailer</a></p>` : ""}
-                </div>
-            </div>
-            `;
-
-            mainSection.classList.add('hidden');
-            favSection.classList.add('hidden');
-            detailSection.classList.remove('hidden')
-
-        } catch (error) {
-            alert("Failed to fetch movie/series data. Please check your internet connection.");
-    }
-}
-
-
-let favorites = JSON.parse(localStorage.getItem("favorites")) || [];
-
-
+// Toggle favorite status for a movie/TV show
 function toggleFav(item)
 {
-
     const favItem = {
         id: item.id,
         media_type: item.media_type || (item.title ? "movie" : "tv"),
@@ -370,8 +367,6 @@ function toggleFav(item)
     const index = favorites.findIndex(
         fav => fav.id === favItem.id && fav.media_type === favItem.media_type
     );
-
-    let action;
 
     if(index === -1)
     {
@@ -391,11 +386,18 @@ function toggleFav(item)
     }
 }
 
+// Display favorites in the favorites container
 function showFav()
 {
     // Always reload from localStorage to keep it fresh
     const favs = JSON.parse(localStorage.getItem("favorites")) || [];
     displayMovies(favs, favContainer);
 }
+
+
+// Code runs automatically right when the page opens
+window.addEventListener('DOMContentLoaded', () => {
+    getPopularMovies();
+});
 
 
